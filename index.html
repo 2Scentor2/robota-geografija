@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Работа по географії</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <style>
+        :root {
+            --green: #2d5a27;
+            --soft-green: #e8f3e8;
+            --accent-lime: #a3cc71;
+            --white: #ffffff;
+            --dot-color: #cbdccb;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--soft-green);
+            background-image: radial-gradient(var(--dot-color) 2px, transparent 2px);
+            background-size: 25px 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .main-card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            width: 92vw;
+            max-width: 1100px;
+            height: 85vh;
+            background: var(--white);
+            border-radius: 40px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.12);
+            border: 10px solid var(--white);
+        }
+
+        .viewer-container {
+            flex: 1;
+            background: linear-gradient(135deg, #f9fff9 0%, #e2eee2 100%);
+            position: relative;
+            border-radius: 30px;
+            overflow: hidden;
+        }
+
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            outline: none;
+            --interaction-prompt-display: none;
+        }
+
+        #popup-info {
+            position: absolute;
+            display: none;
+            background: var(--white);
+            border-left: 6px solid var(--green);
+            padding: 18px 22px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            z-index: 100;
+            width: 280px;
+            pointer-events: none;
+            transform: translate(-50%, -115%);
+            transition: opacity 0.2s ease-out;
+        }
+
+        #popup-info::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 12px solid var(--white);
+        }
+
+        #popup-info h3 { 
+            margin: 0 0 8px 0; 
+            color: var(--green); 
+            font-size: 20px; 
+            border-bottom: 2px solid var(--soft-green);
+            padding-bottom: 5px;
+        }
+
+        #popup-info p { 
+            margin: 0; 
+            color: #333; 
+            font-size: 15px; 
+            line-height: 1.5; 
+        }
+
+        .instruction {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: var(--green);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 600;
+            pointer-events: none;
+            box-shadow: 0 5px 15px rgba(45, 90, 39, 0.3);
+            z-index: 10;
+        }
+
+        @media (max-width: 768px) {
+            .main-card { height: 90vh; border-radius: 25px; border-width: 5px; }
+            #popup-info { width: 220px; padding: 15px; }
+            #popup-info h3 { font-size: 17px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-card">
+    <div class="viewer-container">
+        <div class="instruction">Натисніть на шар грунту</div>
+        
+        <model-viewer id="mv" 
+            src="model.glb" 
+            camera-controls 
+            disable-zoom 
+            disable-tap
+            min-camera-orbit="auto auto auto"
+            max-camera-orbit="auto auto auto"
+            shadow-intensity="1.5"
+            auto-rotate>
+            
+            <div id="popup-info">
+                <h3 id="pop-title">Елемент</h3>
+                <p id="pop-text">Опис...</p>
+            </div>
+
+        </model-viewer>
+    </div>
+</div>
+
+<script>
+    const mv = document.querySelector('#mv');
+    const popup = document.querySelector('#popup-info');
+    const popTitle = document.querySelector('#pop-title');
+    const popText = document.querySelector('#pop-text');
+
+    const library = {
+        "Material.001": { title: "75см", text: "ілювіальний, до якого вмиваються і де частково накопичуються продукти грунтоутворення." },
+        "Material.002": { title: "25см", text: "Гумусово-акумулятивний (у ньому накопичується гумус), часто ще й елювіальний." },
+        "Material.003": { title: "5см", text: "Лісова або степова підстилка." },
+        "Material":     { title: "120см", text: "материнська гірська прода. У чорноземах елювіальний горизонт вважають перехідним (від гумусово-акумулятивного до материнської породи)." }
+    };
+
+    mv.addEventListener('click', (event) => {
+        const material = mv.materialFromPoint(event.clientX, event.clientY);
+        
+        mv.model.materials.forEach(m => m.setEmissiveFactor([0, 0, 0]));
+
+        if (material && library[material.name]) {
+            const name = material.name;
+            
+            popup.style.display = 'block';
+            popup.style.opacity = '1';
+
+            const rect = mv.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            popup.style.left = `${x}px`;
+            popup.style.top = `${y}px`;
+
+            popTitle.innerText = library[name].title;
+            popText.innerText = library[name].text;
+
+            material.setEmissiveFactor([0, 0.3, 0.05]);
+        } else {
+            popup.style.display = 'none';
+        }
+    });
+
+    mv.addEventListener('mousemove', (event) => {
+        const material = mv.materialFromPoint(event.clientX, event.clientY);
+        mv.style.cursor = (material && library[material.name]) ? 'pointer' : 'grab';
+    });
+</script>
+
+</body>
+</html>
